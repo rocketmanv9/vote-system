@@ -50,13 +50,35 @@ function dedupeItems(items: WeatherVoteItem[]) {
 
 function buildDateTime(forecastDate?: string | null, timeValue?: string | null) {
   if (!timeValue) return null;
-  if (timeValue.includes("T")) {
-    const parsed = new Date(timeValue);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+
+  try {
+    // Parse the time string and extract just the time portion (ignore timezone)
+    // Format: "2026-01-07 07:10:00+00" -> extract "07:10:00"
+    let timePart: string;
+
+    if (timeValue.includes(' ')) {
+      // Format: "2026-01-07 07:10:00+00"
+      timePart = timeValue.split(' ')[1]?.split('+')[0] || timeValue;
+    } else if (timeValue.includes('T')) {
+      // Format: "2026-01-07T07:10:00+00"
+      timePart = timeValue.split('T')[1]?.split('+')[0] || timeValue;
+    } else {
+      timePart = timeValue;
+    }
+
+    const [hours, minutes, seconds] = timePart.split(':').map(Number);
+
+    if (isNaN(hours) || isNaN(minutes)) {
+      return null;
+    }
+
+    // Create a date object with the parsed time (no timezone conversion)
+    const date = new Date();
+    date.setHours(hours, minutes, seconds || 0, 0);
+    return date;
+  } catch {
+    return null;
   }
-  if (!forecastDate) return null;
-  const combined = new Date(`${forecastDate}T${timeValue}`);
-  return Number.isNaN(combined.getTime()) ? null : combined;
 }
 
 type VoteLandingProps = {

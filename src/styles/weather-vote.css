@@ -172,10 +172,38 @@
   margin-bottom: 0.5rem;
 }
 
+.single-job-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
 .single-job-service {
-  font-size: 1.125rem;
+  font-size: 1rem;
   color: #64748b;
+  font-weight: 600;
+  margin: 0;
+}
+
+.single-job-date {
+  font-size: 1rem;
+  color: #475569;
   font-weight: 500;
+  margin: 0;
+}
+
+.single-job-route-time {
+  font-size: 1rem;
+  color: #475569;
+  font-weight: 500;
+  margin: 0;
+}
+
+.meta-separator {
+  color: #cbd5e1;
+  font-weight: 300;
 }
 
 .single-job-details {

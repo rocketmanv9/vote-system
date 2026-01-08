@@ -28,6 +28,49 @@ const voteOptions = [
   { label: "Decide at dispatch", value: "Decide at dispatch", className: "vote-action-btn-go", icon: "?" },
 ];
 
+function formatTime(timeString: string | null | undefined): string {
+  if (!timeString) return "TBD";
+
+  try {
+    // Parse the time string and extract just the time portion
+    // Format: "2026-01-07 07:10:00+00" -> extract "07:10:00"
+    const timePart = timeString.split(' ')[1]?.split('+')[0] || timeString;
+    const [hours, minutes] = timePart.split(':').map(Number);
+
+    if (isNaN(hours) || isNaN(minutes)) {
+      return timeString;
+    }
+
+    // Convert to 12-hour format
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 || 12;
+
+    return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+  } catch {
+    return timeString;
+  }
+}
+
+function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return "Date TBD";
+
+  try {
+    // Parse date string without timezone conversion
+    // Format: "2026-01-07" or "2026-01-07 07:10:00+00"
+    const datePart = dateString.split(' ')[0] || dateString;
+    const [year, month, day] = datePart.split('-').map(Number);
+
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+      return dateString;
+    }
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${monthNames[month - 1]} ${day}, ${year}`;
+  } catch {
+    return dateString;
+  }
+}
+
 export function SingleJobView({
   item,
   currentIndex,
@@ -97,29 +140,19 @@ export function SingleJobView({
         <div className="single-job-header">
           <div>
             <h1 className="single-job-title">{item.property_name || "Property"}</h1>
-            <p className="single-job-service">{item.service_name || "Service"}</p>
+            <div className="single-job-meta-line">
+              <p className="single-job-service">{item.service_name || "Service"}</p>
+              <span className="meta-separator">•</span>
+              <p className="single-job-date">{formatDate(item.forecast_date)}</p>
+              <span className="meta-separator">•</span>
+              <p className="single-job-route-time">
+                {formatTime(item.route_start_time)} - {formatTime(item.route_end_time)}
+              </p>
+            </div>
           </div>
           <span className={riskBadgeClass}>
             {item.risk_level || "Risk N/A"}
           </span>
-        </div>
-
-        {/* Job Details */}
-        <div className="single-job-details">
-          <div className="job-detail-item">
-            <span className="job-detail-label">Job ID</span>
-            <span className="job-detail-value">{item.internal_job_id}</span>
-          </div>
-          <div className="job-detail-item">
-            <span className="job-detail-label">Date</span>
-            <span className="job-detail-value">{item.forecast_date || "TBD"}</span>
-          </div>
-          <div className="job-detail-item">
-            <span className="job-detail-label">Route Time</span>
-            <span className="job-detail-value">
-              {item.route_start_time || "TBD"} - {item.route_end_time || "TBD"}
-            </span>
-          </div>
         </div>
 
         {/* Weather Stats */}
