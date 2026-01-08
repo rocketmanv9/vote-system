@@ -113,6 +113,13 @@ function getTempStyles(tempF: number, condition: string) {
   return { color: "#2563eb", background: "rgba(219, 234, 254, 0.5)", border: "rgba(59, 130, 246, 0.35)" };
 }
 
+function isEditableTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  return target.isContentEditable;
+}
+
 export default function VotePage() {
   const params = useParams<{ campaignId: string }>();
   const searchParams = useSearchParams();
@@ -366,6 +373,25 @@ export default function VotePage() {
     }
   }, [assignments, finishVoting, submitVote]);
 
+  const goPrev = useCallback(() => {
+    triggerHaptic('light');
+    setCurrentIndex((index) => Math.max(0, index - 1));
+  }, []);
+
+  const goNext = useCallback(() => {
+    if (saving) return;
+    if (!canAdvance) return;
+    if (currentIndex + 1 >= assignments.length) {
+      if (allComplete) {
+        submitAllVotes();
+      }
+      return;
+    }
+    triggerHaptic('medium');
+    celebrate('success', undefined, 20);
+    setCurrentIndex((index) => Math.min(assignments.length, index + 1));
+  }, [allComplete, assignments.length, canAdvance, currentIndex, saving, submitAllVotes]);
+
   const currentWeather = current?.job.internal_job_id
     ? weatherCache[String(current.job.internal_job_id)]
     : undefined;
@@ -386,6 +412,25 @@ export default function VotePage() {
       !!assignment.vote &&
       (assignment.vote !== "delay" || !!assignment.delay_minutes)
   );
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (isEditableTarget(event.target)) return;
+      if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+        event.preventDefault();
+        goPrev();
+        return;
+      }
+      if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+        event.preventDefault();
+        goNext();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [goNext, goPrev]);
 
   useEffect(() => {
     if (!isExpanded || !currentWeather?.hourly?.length) return;
@@ -794,27 +839,14 @@ export default function VotePage() {
 
         <div className="vote-navigation">
           <button
-            onClick={() => {
-              triggerHaptic('light');
-              setCurrentIndex((index) => Math.max(0, index - 1));
-            }}
+            onClick={goPrev}
             disabled={currentIndex === 0}
             className="nav-btn"
           >
             Back
           </button>
           <button
-            onClick={() => {
-              if (currentIndex + 1 >= assignments.length) {
-                submitAllVotes();
-                return;
-              }
-              triggerHaptic('medium');
-              celebrate('success', undefined, 20);
-              setCurrentIndex((index) =>
-                Math.min(assignments.length, index + 1)
-              );
-            }}
+            onClick={goNext}
             disabled={!canAdvance || (currentIndex + 1 >= assignments.length && !allComplete) || saving}
             className="nav-btn nav-btn-primary"
           >

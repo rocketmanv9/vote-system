@@ -25,6 +25,13 @@ function getItemKey(item: WeatherVoteItem) {
   }`;
 }
 
+function isEditableTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  return target.isContentEditable;
+}
+
 function mapVotes(votes: WeatherVoteVote[] | null | undefined) {
   const result: Record<string, WeatherVoteVote> = {};
   (votes ?? []).forEach((vote) => {
@@ -243,6 +250,29 @@ export function VoteLanding({ token }: VoteLandingProps) {
   useEffect(() => {
     loadContext();
   }, [loadContext]);
+
+  useEffect(() => {
+    if (viewState !== 'voting') return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (isEditableTarget(event.target)) return;
+      if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+        event.preventDefault();
+        setCurrentJobIndex((index) => Math.max(0, index - 1));
+        return;
+      }
+      if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+        event.preventDefault();
+        setCurrentJobIndex((index) =>
+          Math.min(items.length - 1, index + 1)
+        );
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [items.length, viewState]);
 
   const submitVote = useCallback(
     async (payload: SubmitPayload, key: string) => {
