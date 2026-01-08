@@ -1,0 +1,384 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { WeatherVoteContext, WeatherVoteItem, WeatherVoteVote } from "@/lib/weather-vote";
+import { WelcomeScreen } from "@/components/weather-vote/WelcomeScreen";
+import { SingleJobView } from "@/components/weather-vote/SingleJobView";
+import { SummaryScreen } from "@/components/weather-vote/SummaryScreen";
+import { ErrorState } from "@/components/weather-vote/ErrorState";
+import "@/styles/weather-vote.css";
+
+type SubmitPayload = {
+  token: string;
+  internalJobId: number;
+  forecastDate: string | null;
+  lensId: string | null;
+  voteValue: string;
+  voteReason?: string | null;
+};
+
+type ViewState = 'loading' | 'welcome' | 'voting' | 'summary' | 'error';
+
+function getItemKey(item: WeatherVoteItem) {
+  return `${item.internal_job_id}|${item.forecast_date ?? ""}|${
+    item.lens_id ?? ""
+  }`;
+}
+
+function mapVotes(votes: WeatherVoteVote[] | null | undefined) {
+  const result: Record<string, WeatherVoteVote> = {};
+  (votes ?? []).forEach((vote) => {
+    const key = `${vote.internal_job_id}|${vote.forecast_date ?? ""}|${
+      vote.lens_id ?? ""
+    }`;
+    result[key] = vote;
+  });
+  return result;
+}
+
+function dedupeItems(items: WeatherVoteItem[]) {
+  const seen = new Set<string>();
+  const result: WeatherVoteItem[] = [];
+  for (const item of items) {
+    const key = getItemKey(item);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(item);
+  }
+  return result;
+}
+
+function buildDateTime(forecastDate?: string | null, timeValue?: string | null) {
+  if (!timeValue) return null;
+  if (timeValue.includes("T")) {
+    const parsed = new Date(timeValue);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  if (!forecastDate) return null;
+  const combined = new Date(`${forecastDate}T${timeValue}`);
+  return Number.isNaN(combined.getTime()) ? null : combined;
+}
+
+type VoteLandingProps = {
+  token: string;
+};
+
+export function VoteLanding({ token }: VoteLandingProps) {
+  const [viewState, setViewState] = useState<ViewState>('loading');
+  const [error, setError] = useState<string | null>(null);
+  const [context, setContext] = useState<WeatherVoteContext | null>(null);
+  const [items, setItems] = useState<WeatherVoteItem[]>([]);
+  const [votes, setVotes] = useState<Record<string, WeatherVoteVote | null>>({});
+  const [currentJobIndex, setCurrentJobIndex] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [expandedWeather, setExpandedWeather] = useState<Set<string>>(new Set());
+  const [weatherData, setWeatherData] = useState<Record<string, any>>({});
+  const [loadingWeather, setLoadingWeather] = useState<Set<string>>(new Set());
+
+  const voterIdentity = useMemo(() => {
+    if (!context) return "Voter";
+    const tokenWrapper: any = (context as any)?.token ?? {};
+    const voterType =
+      tokenWrapper.voter_type ??
+      (context as any).voter_type ??
+      (context as any).token_voter_type ??
+      null;
+    const employeeName =
+      tokenWrapper.employee_name ??
+      tokenWrapper.full_name ??
+      (context as any).employee_name ??
+      (context as any).full_name ??
+      null;
+
+    if (String(voterType).toLowerCase() === "estimator") {
+      return "Estimator";
+    }
+    return employeeName ?? "Employee";
+  }, [context]);
+
+  const loadContext = useCallback(async () => {
+    if (!token) {
+      setError("Missing token.");
+      setViewState('error');
+      return;
+    }
+
+    setViewState('loading');
+    setError(null);
+
+    try {
+      const response = await fetch("/api/weather-vote/context", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      if (!response.ok) {
+        const payload = await response.json();
+        throw new Error(payload.message || "Invalid or expired link.");
+      }
+
+      const payload = await response.json();
+      const rawContext = payload.context;
+      const contextData = (Array.isArray(rawContext) ? rawContext[0] : rawContext) as WeatherVoteContext;
+
+      setContext(contextData);
+
+      const rawItems = (contextData as any)?.items ?? [];
+      const mappedItems = rawItems
+        .map((item: any) => {
+          const internalJobId =
+            item.internal_job_id ?? item.job_id ?? item.acm_job_id;
+          const forecastDate = item.forecast_date ?? item.date;
+          const lensId = item.lens_id ?? item.lens ?? null;
+          if (internalJobId == null || !forecastDate || lensId == null) {
+            console.warn("Skipping invalid item row", item);
+            return null;
+          }
+          const existingVote = item.existing_vote ?? null;
+          return {
+            internal_job_id: Number(internalJobId),
+            forecast_date: String(forecastDate),
+            lens_id: lensId,
+            property_name: item.property_name ?? null,
+            service_name: item.service_name ?? null,
+            risk_level: item.risk_level ?? null,
+            route_start_time: item.route_start_time ?? null,
+            route_end_time: item.route_end_time ?? null,
+            max_rain_chance: item.max_rain_chance ?? null,
+            max_rain_inches_route: item.max_rain_inches_route ?? null,
+            hourly_weather: item.hourly_weather ?? null,
+            existing_vote: existingVote,
+          } as WeatherVoteItem & { existing_vote?: any };
+        })
+        .filter(Boolean) as WeatherVoteItem[];
+
+      const contextItems = dedupeItems(mappedItems);
+      const contextVotes = mapVotes(contextData.votes ?? []);
+
+      const voteFromItems: Record<string, WeatherVoteVote> = {};
+      contextItems.forEach((item: any) => {
+        const existingVote = item.existing_vote;
+        if (!existingVote) return;
+        const key = getItemKey(item);
+        voteFromItems[key] = {
+          internal_job_id: item.internal_job_id,
+          forecast_date: item.forecast_date,
+          lens_id: item.lens_id,
+          vote_value: existingVote.vote_value ?? null,
+          vote_reason: existingVote.vote_reason ?? null,
+          voted_at: existingVote.voted_at ?? null,
+        };
+      });
+
+      const mergedVotes = { ...voteFromItems, ...contextVotes };
+      setItems(contextItems);
+      setVotes(mergedVotes);
+
+      // Determine initial view state
+      const allVoted = contextItems.every((item) => {
+        const key = getItemKey(item);
+        return !!mergedVotes[key]?.vote_value;
+      });
+
+      if (allVoted && contextItems.length > 0) {
+        setViewState('summary');
+      } else {
+        setViewState('welcome');
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Invalid or expired link.";
+      setError(message);
+      setViewState('error');
+    }
+  }, [token]);
+
+  useEffect(() => {
+    loadContext();
+  }, [loadContext]);
+
+  const submitVote = useCallback(
+    async (payload: SubmitPayload, key: string) => {
+      setSubmitting(true);
+
+      try {
+        const response = await fetch("/api/weather-vote/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          const payloadError = await response.json();
+          throw new Error(payloadError.message || "Submit failed.");
+        }
+
+        setVotes((prev) => ({
+          ...prev,
+          [key]: {
+            internal_job_id: payload.internalJobId,
+            forecast_date: payload.forecastDate,
+            lens_id: payload.lensId,
+            vote_value: payload.voteValue,
+            vote_reason: payload.voteReason ?? null,
+            voted_at: new Date().toISOString(),
+          },
+        }));
+
+        // Move to next job or summary
+        if (currentJobIndex + 1 < items.length) {
+          setTimeout(() => {
+            setCurrentJobIndex((prev) => prev + 1);
+            setSubmitting(false);
+          }, 800); // Small delay for animation
+        } else {
+          setTimeout(() => {
+            setViewState('summary');
+            setSubmitting(false);
+          }, 800);
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Submit failed.";
+        alert(message);
+        setSubmitting(false);
+      }
+    },
+    [currentJobIndex, items.length]
+  );
+
+  const handleVote = useCallback(
+    (value: string, reason: string) => {
+      const item = items[currentJobIndex];
+      if (!item) return;
+      const key = getItemKey(item);
+      submitVote(
+        {
+          token,
+          internalJobId: item.internal_job_id,
+          forecastDate: item.forecast_date ?? null,
+          lensId: item.lens_id ?? null,
+          voteValue: value,
+          voteReason: reason ?? null,
+        },
+        key
+      );
+    },
+    [currentJobIndex, items, submitVote, token]
+  );
+
+  const toggleWeather = useCallback(
+    async (item: WeatherVoteItem) => {
+      const key = getItemKey(item);
+      setExpandedWeather((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) {
+          next.delete(key);
+        } else {
+          next.add(key);
+        }
+        return next;
+      });
+
+      if (weatherData[key] || loadingWeather.has(key)) return;
+
+      setLoadingWeather((prev) => new Set(prev).add(key));
+      try {
+        const response = await fetch(
+          `/api/weather-vote/job-weather?jobId=${encodeURIComponent(
+            item.internal_job_id
+          )}&forecastDate=${encodeURIComponent(item.forecast_date ?? "")}`
+        );
+        if (!response.ok) {
+          const payload = await response.json();
+          throw new Error(payload.message || "Weather lookup failed.");
+        }
+        const payload = await response.json();
+        setWeatherData((prev) => ({ ...prev, [key]: payload.weather }));
+      } catch (err) {
+        console.error("Weather fetch error:", err);
+        setWeatherData((prev) => ({ ...prev, [key]: null }));
+      } finally {
+        setLoadingWeather((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }
+    },
+    [loadingWeather, weatherData]
+  );
+
+  // Loading state
+  if (viewState === 'loading') {
+    return (
+      <div className="weather-vote-container">
+        <div className="weather-vote-content">
+          <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem', textAlign: 'center' }}>
+            Loading your voting session...
+          </p>
+          {[1, 2, 3].map((index) => (
+            <div key={index} className="loading-skeleton" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (viewState === 'error') {
+    return <ErrorState message={error || "An error occurred."} />;
+  }
+
+  // Welcome screen
+  if (viewState === 'welcome') {
+    return (
+      <WelcomeScreen
+        voterName={voterIdentity}
+        totalJobs={items.length}
+        onBegin={() => {
+          setViewState('voting');
+          setCurrentJobIndex(0);
+        }}
+      />
+    );
+  }
+
+  // Voting screen (one job at a time)
+  if (viewState === 'voting') {
+    const currentItem = items[currentJobIndex];
+    if (!currentItem) {
+      setViewState('summary');
+      return null;
+    }
+
+    const key = getItemKey(currentItem);
+
+    return (
+      <SingleJobView
+        item={currentItem}
+        currentIndex={currentJobIndex}
+        totalJobs={items.length}
+        isWeatherExpanded={expandedWeather.has(key)}
+        isWeatherLoading={loadingWeather.has(key)}
+        weatherData={weatherData[key] ?? null}
+        onToggleWeather={() => toggleWeather(currentItem)}
+        onVote={handleVote}
+        submitting={submitting}
+        jobStartTime={buildDateTime(currentItem.forecast_date, currentItem.route_start_time)}
+        jobEndTime={buildDateTime(currentItem.forecast_date, currentItem.route_end_time)}
+      />
+    );
+  }
+
+  // Summary screen
+  if (viewState === 'summary') {
+    return (
+      <SummaryScreen
+        voterName={voterIdentity}
+        items={items}
+        votes={votes}
+      />
+    );
+  }
+
+  return null;
+}

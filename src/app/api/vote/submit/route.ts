@@ -29,12 +29,19 @@ export async function POST(request: Request) {
     );
   }
 
-  if (vote === "delay" && (delayMinutes == null || delayMinutes <= 0)) {
+  if (!["go", "delay", "hold"].includes(vote)) {
+    return NextResponse.json({ error: "Invalid vote value." }, { status: 400 });
+  }
+
+  if (vote !== "delay" && delayMinutes != null) {
     return NextResponse.json(
-      { error: "delay_minutes is required for delay votes." },
+      { error: "delay_minutes is only allowed for delay votes." },
       { status: 400 }
     );
   }
+
+  const normalizedDelayMinutes =
+    vote === "delay" ? (delayMinutes && delayMinutes > 0 ? delayMinutes : 60) : null;
 
   const supabase = createSupabaseServerClient();
   const now = new Date().toISOString();
@@ -42,19 +49,27 @@ export async function POST(request: Request) {
     .from("weather_vote_assignments")
     .update({
       vote,
-      delay_minutes: vote === "delay" ? delayMinutes : null,
+      delay_minutes: normalizedDelayMinutes,
       comment,
       status: "voted",
       voted_at: now,
       updated_at: now,
     })
     .eq("id", assignmentId)
-    .select("*")
+    .select("id, campaign_person_id, vote, delay_minutes, comment, status, voted_at")
     .single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  await supabase
+    .from("weather_vote_people")
+    .update({
+      last_activity_at: now,
+      invite_status: "started",
+    })
+    .eq("id", data.campaign_person_id);
 
   return NextResponse.json({ assignment: data });
 }

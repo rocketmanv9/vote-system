@@ -31,7 +31,18 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from("weather_vote_tokens")
-    .select("person_id, display_name, role, campaign_id, revoked_at, expires_at")
+    .select(
+      `
+      person_id,
+      campaign_id,
+      revoked_at,
+      expires_at,
+      weather_vote_people (
+        display_name,
+        role
+      )
+    `
+    )
     .eq("token_hash", tokenHash)
     .is("revoked_at", null)
     .gt("expires_at", new Date().toISOString())
@@ -55,9 +66,21 @@ export async function POST(request: Request) {
     );
   }
 
+  await supabase
+    .from("weather_vote_people")
+    .update({
+      last_activity_at: new Date().toISOString(),
+      invite_status: "viewed",
+    })
+    .eq("id", data.person_id);
+
+  const peopleData = Array.isArray(data.weather_vote_people)
+    ? data.weather_vote_people[0]
+    : data.weather_vote_people;
+
   return NextResponse.json({
     personId: data.person_id,
-    displayName: data.display_name,
-    role: data.role,
+    displayName: peopleData?.display_name ?? null,
+    role: peopleData?.role ?? null,
   });
 }
