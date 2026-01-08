@@ -74,36 +74,41 @@ export function VoteLanding({ token }: VoteLandingProps) {
   const [expandedWeather, setExpandedWeather] = useState<Set<string>>(new Set());
   const [weatherData, setWeatherData] = useState<Record<string, any>>({});
   const [loadingWeather, setLoadingWeather] = useState<Set<string>>(new Set());
+  const [counts, setCounts] = useState({
+    total_items: 0,
+    voted_items: 0,
+    remaining_items: 0,
+  });
 
   const voterIdentity = useMemo(() => {
     if (!context) return "Voter";
-    const tokenWrapper: any = (context as any)?.token ?? {};
-    const voterType =
-      tokenWrapper.voter_type ??
-      (context as any).voter_type ??
-      (context as any).token_voter_type ??
-      null;
-    const employeeName =
-      tokenWrapper.employee_name ??
-      tokenWrapper.full_name ??
-      (context as any).employee_name ??
-      (context as any).full_name ??
-      null;
-
-    if (String(voterType).toLowerCase() === "estimator") {
-      return "Estimator";
+    const voterType = String(context.voter_type ?? "").toLowerCase();
+    if (voterType === "employee") {
+      if (context.employee_full_name) return context.employee_full_name;
+      if (context.employee_id != null) return `Employee #${context.employee_id}`;
+      return "Employee";
     }
-    return employeeName ?? "Employee";
-  }, [context]);
+    if (voterType === "estimator") {
+      const firstInitials =
+        items.find((item) => item.estimator_initials)?.estimator_initials ??
+        null;
+      return firstInitials ?? "Estimator";
+    }
+    return "Voter";
+  }, [context, items]);
 
-  const loadContext = useCallback(async () => {
+  const loadContext = useCallback(async (options?: { showLoading?: boolean; allowViewReset?: boolean }) => {
+    const showLoading = options?.showLoading ?? true;
+    const allowViewReset = options?.allowViewReset ?? showLoading;
     if (!token) {
       setError("Missing token.");
       setViewState('error');
       return;
     }
 
-    setViewState('loading');
+    if (showLoading) {
+      setViewState('loading');
+    }
     setError(null);
 
     try {
@@ -123,7 +128,7 @@ export function VoteLanding({ token }: VoteLandingProps) {
 
       setContext(contextData);
 
-      const rawItems = (contextData as any)?.items ?? [];
+      const rawItems = contextData?.items ?? [];
       const mappedItems = rawItems
         .map((item: any) => {
           const internalJobId =
@@ -141,6 +146,7 @@ export function VoteLanding({ token }: VoteLandingProps) {
             lens_id: lensId,
             property_name: item.property_name ?? null,
             service_name: item.service_name ?? null,
+            estimator_initials: item.estimator_initials ?? null,
             risk_level: item.risk_level ?? null,
             route_start_time: item.route_start_time ?? null,
             route_end_time: item.route_end_time ?? null,
@@ -174,6 +180,25 @@ export function VoteLanding({ token }: VoteLandingProps) {
       setItems(contextItems);
       setVotes(mergedVotes);
 
+      const totalItems = contextData?.total_items ?? contextItems.length;
+      const votedItems =
+        contextData?.voted_items ??
+        contextData?.total_voted ??
+        Object.keys(mergedVotes).length;
+      const remainingItems =
+        contextData?.remaining_items ??
+        contextData?.total_remaining ??
+        Math.max(0, Number(totalItems ?? 0) - Number(votedItems ?? 0));
+      setCounts({
+        total_items: Number(totalItems ?? 0),
+        voted_items: Number(votedItems ?? 0),
+        remaining_items: Number(remainingItems ?? 0),
+      });
+
+      if (currentJobIndex >= contextItems.length) {
+        setCurrentJobIndex(Math.max(0, contextItems.length - 1));
+      }
+
       // Determine initial view state
       const allVoted = contextItems.every((item) => {
         const key = getItemKey(item);
@@ -182,7 +207,7 @@ export function VoteLanding({ token }: VoteLandingProps) {
 
       if (allVoted && contextItems.length > 0) {
         setViewState('summary');
-      } else {
+      } else if (allowViewReset) {
         setViewState('welcome');
       }
     } catch (err) {
@@ -191,7 +216,7 @@ export function VoteLanding({ token }: VoteLandingProps) {
       setError(message);
       setViewState('error');
     }
-  }, [token]);
+  }, [currentJobIndex, token]);
 
   useEffect(() => {
     loadContext();
@@ -223,6 +248,8 @@ export function VoteLanding({ token }: VoteLandingProps) {
             voted_at: new Date().toISOString(),
           },
         }));
+
+        await loadContext({ showLoading: false, allowViewReset: false });
 
         // Move to next job or summary
         if (currentJobIndex + 1 < items.length) {
@@ -330,10 +357,12 @@ export function VoteLanding({ token }: VoteLandingProps) {
 
   // Welcome screen
   if (viewState === 'welcome') {
+    const totalJobs =
+      counts.remaining_items > 0 ? counts.remaining_items : items.length;
     return (
       <WelcomeScreen
         voterName={voterIdentity}
-        totalJobs={items.length}
+        totalJobs={totalJobs}
         onBegin={() => {
           setViewState('voting');
           setCurrentJobIndex(0);
