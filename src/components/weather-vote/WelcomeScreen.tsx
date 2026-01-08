@@ -7,12 +7,40 @@ type WelcomeScreenProps = {
   voterName: string;
   totalJobs: number;
   onBegin: () => void;
+  onGoToSummary?: () => void;
+  hasSummary?: boolean;
 };
 
-export function WelcomeScreen({ voterName, totalJobs, onBegin }: WelcomeScreenProps) {
+export function WelcomeScreen({ voterName, totalJobs, onBegin, onGoToSummary, hasSummary }: WelcomeScreenProps) {
   return (
     <div className="welcome-screen">
+      {/* Navigation arrows */}
+      <div className="screen-navigation">
+        <div className="nav-arrow-placeholder"></div>
+        {hasSummary && onGoToSummary && (
+          <button
+            onClick={() => {
+              triggerHaptic('light');
+              onGoToSummary();
+            }}
+            className="nav-arrow nav-arrow-right"
+            aria-label="Go to summary"
+          >
+            →
+          </button>
+        )}
+      </div>
+
       <div className="welcome-content">
+        {/* Disclaimer at the top */}
+        <div className="welcome-disclaimer-top">
+          <div className="disclaimer-icon">⚠️</div>
+          <div className="disclaimer-content">
+            <div className="disclaimer-title">IMPORTANT NOTICE</div>
+            <div className="disclaimer-text">Only Tyler and Bob may cancel jobs</div>
+          </div>
+        </div>
+
         <div className="welcome-icon">👋</div>
         <h1 className="welcome-title">Hello, {voterName}!</h1>
         <p className="welcome-subtitle">

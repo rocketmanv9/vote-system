@@ -19,6 +19,10 @@ type SingleJobViewProps = {
   submitting: boolean;
   jobStartTime?: Date | null;
   jobEndTime?: Date | null;
+  onNavigatePrev?: () => void;
+  onNavigateNext?: () => void;
+  canNavigatePrev?: boolean;
+  canNavigateNext?: boolean;
 };
 
 const voteOptions = [
@@ -83,6 +87,10 @@ export function SingleJobView({
   submitting,
   jobStartTime,
   jobEndTime,
+  onNavigatePrev,
+  onNavigateNext,
+  canNavigatePrev = false,
+  canNavigateNext = false,
 }: SingleJobViewProps) {
   const [reason, setReason] = useState("");
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
@@ -124,6 +132,38 @@ export function SingleJobView({
 
   return (
     <div className="single-job-view">
+      {/* Navigation arrows at the bottom */}
+      <div className="job-navigation-arrows">
+        {canNavigatePrev && onNavigatePrev ? (
+          <button
+            onClick={() => {
+              triggerHaptic('light');
+              onNavigatePrev();
+            }}
+            className="job-nav-arrow job-nav-arrow-left"
+            aria-label="Previous job"
+          >
+            ←
+          </button>
+        ) : (
+          <div className="job-nav-arrow-placeholder"></div>
+        )}
+        {canNavigateNext && onNavigateNext ? (
+          <button
+            onClick={() => {
+              triggerHaptic('light');
+              onNavigateNext();
+            }}
+            className="job-nav-arrow job-nav-arrow-right"
+            aria-label="Next job"
+          >
+            →
+          </button>
+        ) : (
+          <div className="job-nav-arrow-placeholder"></div>
+        )}
+      </div>
+
       {/* Progress Bar */}
       <div className="job-progress-bar">
         <div className="job-progress-fill" style={{ width: `${((currentIndex + 1) / totalJobs) * 100}%` }} />

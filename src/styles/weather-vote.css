@@ -7,6 +7,62 @@
   animation: fadeIn 0.6s ease-in;
 }
 
+/* ===== NAVIGATION ARROWS ===== */
+.screen-navigation {
+  position: fixed;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2rem;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.nav-arrow {
+  pointer-events: auto;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  color: #0f172a;
+  font-size: 2rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeIn 0.8s ease-in;
+}
+
+.nav-arrow:hover {
+  transform: scale(1.15);
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+}
+
+.nav-arrow:active {
+  transform: scale(1.05);
+}
+
+.nav-arrow-left {
+  margin-right: auto;
+}
+
+.nav-arrow-right {
+  margin-left: auto;
+}
+
+.nav-arrow-placeholder {
+  width: 4rem;
+  height: 4rem;
+}
+
 /* ===== WELCOME SCREEN ===== */
 .welcome-screen {
   min-height: 100vh;
@@ -16,11 +72,12 @@
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
   padding: 2rem;
   animation: fadeIn 0.8s ease-in;
+  position: relative;
 }
 
 .welcome-content {
   text-align: center;
-  max-width: 600px;
+  max-width: 700px;
   animation: scaleIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -76,6 +133,45 @@
   font-weight: 700;
 }
 
+.welcome-disclaimer-top {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 4px solid #f59e0b;
+  border-radius: 1rem;
+  padding: 1.5rem 2rem;
+  margin-bottom: 2.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.5);
+  animation: slideDown 0.8s ease-out, pulse 2s ease-in-out 1s infinite;
+}
+
+.disclaimer-icon {
+  font-size: 3rem;
+  line-height: 1;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.disclaimer-content {
+  flex: 1;
+  text-align: left;
+}
+
+.disclaimer-title {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #78350f;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+}
+
+.disclaimer-text {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #92400e;
+  line-height: 1.4;
+}
+
 .welcome-begin-btn {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
@@ -105,6 +201,61 @@
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   padding: 2rem 1rem;
   animation: slideInFromRight 0.5s ease-out;
+  position: relative;
+}
+
+/* Job Navigation Arrows at Bottom */
+.job-navigation-arrows {
+  position: fixed;
+  bottom: 2rem;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2rem;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.job-nav-arrow {
+  pointer-events: auto;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.5);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeIn 0.8s ease-in, floatBadge 3s ease-in-out infinite;
+}
+
+.job-nav-arrow:hover {
+  transform: scale(1.15) translateY(-5px);
+  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.7);
+}
+
+.job-nav-arrow:active {
+  transform: scale(1.05) translateY(-3px);
+}
+
+.job-nav-arrow-left {
+  margin-right: auto;
+}
+
+.job-nav-arrow-right {
+  margin-left: auto;
+}
+
+.job-nav-arrow-placeholder {
+  width: 4rem;
+  height: 4rem;
 }
 
 @keyframes slideInFromRight {
@@ -449,10 +600,11 @@
   padding: 3rem 1rem;
   animation: fadeIn 0.8s ease-in;
   overflow-y: auto;
+  position: relative;
 }
 
 .summary-content {
-  max-width: 900px;
+  max-width: 1000px;
   margin: 0 auto;
   text-align: center;
 }
@@ -569,11 +721,85 @@
   line-height: 1.6;
 }
 
+.summary-team-votes {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: #f8fafc;
+}
+
+.summary-team-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.summary-team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.summary-team-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: #1e293b;
+}
+
+.summary-team-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.summary-team-vote {
+  text-align: right;
+  color: #475569;
+}
+
+.summary-team-value {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.summary-team-reason {
+  color: #64748b;
+}
+
+.summary-team-loading,
+.summary-team-error,
+.summary-team-empty {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.summary-team-error {
+  color: #b91c1c;
+}
+
 .summary-job-meta {
   display: flex;
   gap: 0.5rem;
   font-size: 0.75rem;
   color: #94a3b8;
+}
+
+.summary-disclaimer-top {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 4px solid #f59e0b;
+  border-radius: 1rem;
+  padding: 1.5rem 2rem;
+  margin-bottom: 2.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
+  animation: slideDown 0.8s ease-out, pulse 2s ease-in-out 1s infinite;
 }
 
 .summary-footer {
@@ -601,6 +827,37 @@
 
 /* Responsive Design for New Components */
 @media (max-width: 768px) {
+  .screen-navigation {
+    padding: 0 1rem;
+  }
+
+  .nav-arrow {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.5rem;
+  }
+
+  .nav-arrow-placeholder {
+    width: 3rem;
+    height: 3rem;
+  }
+
+  .job-navigation-arrows {
+    padding: 0 1rem;
+    bottom: 1rem;
+  }
+
+  .job-nav-arrow {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.5rem;
+  }
+
+  .job-nav-arrow-placeholder {
+    width: 3rem;
+    height: 3rem;
+  }
+
   .welcome-title {
     font-size: 2.5rem;
   }
@@ -612,6 +869,28 @@
   .welcome-begin-btn {
     font-size: 1.25rem;
     padding: 1rem 2rem;
+  }
+
+  .welcome-disclaimer-top {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .disclaimer-icon {
+    font-size: 2.5rem;
+  }
+
+  .disclaimer-content {
+    text-align: center;
+  }
+
+  .disclaimer-title {
+    font-size: 1rem;
+  }
+
+  .disclaimer-text {
+    font-size: 1rem;
   }
 
   .single-job-card {
@@ -628,6 +907,12 @@
 
   .summary-title {
     font-size: 2rem;
+  }
+
+  .summary-disclaimer-top {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.25rem 1.5rem;
   }
 }
 

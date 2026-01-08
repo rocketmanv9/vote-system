@@ -29,6 +29,14 @@ export type WeatherVoteVote = {
   voted_at?: string | null;
 };
 
+export type WeatherVoteJobVote = {
+  voter_type: string | null;
+  voter_label: string | null;
+  vote_value: string | null;
+  vote_reason: string | null;
+  voted_at?: string | null;
+};
+
 export type WeatherVoteContext = {
   token?: string | null;
   voter_type?: string | null;
@@ -69,11 +77,26 @@ export async function submitWeatherVote(input: {
 }) {
   const supabase = createSupabaseServerClient();
   return supabase.rpc("rpc_weather_vote_submit", {
-    token: input.token,
-    internal_job_id: input.internalJobId,
-    forecast_date: input.forecastDate,
-    lens_id: input.lensId,
-    vote_value: input.voteValue,
-    vote_reason: input.voteReason ?? null,
+    p_token: input.token,
+    p_internal_job_id: input.internalJobId,
+    p_forecast_date: input.forecastDate,
+    p_lens_id: input.lensId,
+    p_vote_value: input.voteValue,
+    p_vote_reason: input.voteReason ?? null,
+  });
+}
+
+export async function getWeatherVoteJobVotes(input: {
+  token: string;
+  internalJobId: number;
+  forecastDate: string;
+  lensId: string;
+}) {
+  const supabase = createSupabaseServerClient();
+  return supabase.rpc("rpc_weather_vote_get_job_votes", {
+    p_token: input.token,
+    p_internal_job_id: input.internalJobId,
+    p_forecast_date: input.forecastDate,
+    p_lens_id: input.lensId,
   });
 }

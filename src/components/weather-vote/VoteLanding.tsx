@@ -217,9 +217,9 @@ export function VoteLanding({ token }: VoteLandingProps) {
         remaining_items: Number(remainingItems ?? 0),
       });
 
-      if (currentJobIndex >= contextItems.length) {
-        setCurrentJobIndex(Math.max(0, contextItems.length - 1));
-      }
+      setCurrentJobIndex((prev) =>
+        prev >= contextItems.length ? Math.max(0, contextItems.length - 1) : prev
+      );
 
       // Determine initial view state
       const allVoted = contextItems.every((item) => {
@@ -238,7 +238,7 @@ export function VoteLanding({ token }: VoteLandingProps) {
       setError(message);
       setViewState('error');
     }
-  }, [currentJobIndex, token]);
+  }, [token]);
 
   useEffect(() => {
     loadContext();
@@ -259,8 +259,8 @@ export function VoteLanding({ token }: VoteLandingProps) {
           throw new Error(payloadError.message || "Submit failed.");
         }
 
-        setVotes((prev) => ({
-          ...prev,
+        const updatedVotes = {
+          ...votes,
           [key]: {
             internal_job_id: payload.internalJobId,
             forecast_date: payload.forecastDate,
@@ -269,22 +269,26 @@ export function VoteLanding({ token }: VoteLandingProps) {
             vote_reason: payload.voteReason ?? null,
             voted_at: new Date().toISOString(),
           },
-        }));
+        };
 
-        await loadContext({ showLoading: false, allowViewReset: false });
+        setVotes(updatedVotes);
 
-        // Move to next job or summary
-        if (currentJobIndex + 1 < items.length) {
-          setTimeout(() => {
-            setCurrentJobIndex((prev) => prev + 1);
-            setSubmitting(false);
-          }, 800); // Small delay for animation
-        } else {
-          setTimeout(() => {
+        // Find the next unvoted job after the current one
+        const nextUnvotedIndex = items.findIndex((item, idx) => {
+          if (idx <= currentJobIndex) return false;
+          const itemKey = getItemKey(item);
+          return !updatedVotes[itemKey]?.vote_value;
+        });
+
+        // Move to next unvoted job or summary
+        setTimeout(() => {
+          if (nextUnvotedIndex >= 0) {
+            setCurrentJobIndex(nextUnvotedIndex);
+          } else {
             setViewState('summary');
-            setSubmitting(false);
-          }, 800);
-        }
+          }
+          setSubmitting(false);
+        }, 800); // Small delay for animation
       } catch (err) {
         const message = err instanceof Error ? err.message : "Submit failed.";
         alert(message);
@@ -381,14 +385,25 @@ export function VoteLanding({ token }: VoteLandingProps) {
   if (viewState === 'welcome') {
     const totalJobs =
       counts.remaining_items > 0 ? counts.remaining_items : items.length;
+    const hasVotedItems = items.some((item) => {
+      const key = getItemKey(item);
+      return votes[key]?.vote_value;
+    });
     return (
       <WelcomeScreen
         voterName={voterIdentity}
         totalJobs={totalJobs}
         onBegin={() => {
+          // Find the first unvoted job
+          const firstUnvotedIndex = items.findIndex((item) => {
+            const key = getItemKey(item);
+            return !votes[key]?.vote_value;
+          });
+          setCurrentJobIndex(firstUnvotedIndex >= 0 ? firstUnvotedIndex : 0);
           setViewState('voting');
-          setCurrentJobIndex(0);
         }}
+        onGoToSummary={() => setViewState('summary')}
+        hasSummary={hasVotedItems}
       />
     );
   }
@@ -416,6 +431,18 @@ export function VoteLanding({ token }: VoteLandingProps) {
         submitting={submitting}
         jobStartTime={buildDateTime(currentItem.forecast_date, currentItem.route_start_time)}
         jobEndTime={buildDateTime(currentItem.forecast_date, currentItem.route_end_time)}
+        onNavigatePrev={() => {
+          if (currentJobIndex > 0) {
+            setCurrentJobIndex(currentJobIndex - 1);
+          }
+        }}
+        onNavigateNext={() => {
+          if (currentJobIndex < items.length - 1) {
+            setCurrentJobIndex(currentJobIndex + 1);
+          }
+        }}
+        canNavigatePrev={currentJobIndex > 0}
+        canNavigateNext={currentJobIndex < items.length - 1}
       />
     );
   }
@@ -424,9 +451,11 @@ export function VoteLanding({ token }: VoteLandingProps) {
   if (viewState === 'summary') {
     return (
       <SummaryScreen
+        token={token}
         voterName={voterIdentity}
         items={items}
         votes={votes}
+        onGoBack={() => setViewState('welcome')}
       />
     );
   }
