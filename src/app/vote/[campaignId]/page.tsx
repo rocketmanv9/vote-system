@@ -373,25 +373,6 @@ export default function VotePage() {
     }
   }, [assignments, finishVoting, submitVote]);
 
-  const goPrev = useCallback(() => {
-    triggerHaptic('light');
-    setCurrentIndex((index) => Math.max(0, index - 1));
-  }, []);
-
-  const goNext = useCallback(() => {
-    if (saving) return;
-    if (!canAdvance) return;
-    if (currentIndex + 1 >= assignments.length) {
-      if (allComplete) {
-        submitAllVotes();
-      }
-      return;
-    }
-    triggerHaptic('medium');
-    celebrate('success', undefined, 20);
-    setCurrentIndex((index) => Math.min(assignments.length, index + 1));
-  }, [allComplete, assignments.length, canAdvance, currentIndex, saving, submitAllVotes]);
-
   const currentWeather = current?.job.internal_job_id
     ? weatherCache[String(current.job.internal_job_id)]
     : undefined;
@@ -412,6 +393,25 @@ export default function VotePage() {
       !!assignment.vote &&
       (assignment.vote !== "delay" || !!assignment.delay_minutes)
   );
+
+  const goPrev = useCallback(() => {
+    triggerHaptic('light');
+    setCurrentIndex((index) => Math.max(0, index - 1));
+  }, []);
+
+  const goNext = useCallback(() => {
+    if (saving) return;
+    if (!canAdvance) return;
+    if (currentIndex + 1 >= assignments.length) {
+      if (allComplete) {
+        submitAllVotes();
+      }
+      return;
+    }
+    triggerHaptic('medium');
+    celebrate('success', undefined, 20);
+    setCurrentIndex((index) => Math.min(assignments.length, index + 1));
+  }, [allComplete, assignments.length, canAdvance, currentIndex, saving, submitAllVotes]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
