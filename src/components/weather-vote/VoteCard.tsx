@@ -25,7 +25,7 @@ type VoteCardProps = {
 
 const voteOptions = [
   { label: "Dispatch anyway", value: "Dispatch anyway", className: "vote-action-btn-go" },
-  { label: "Cancel", value: "Cancel", className: "vote-action-btn-hold" },
+  { label: "I think we should Cancel", value: "I think we should Cancel", className: "vote-action-btn-hold" },
   { label: "Delay by some time", value: "Delay by some time", className: "vote-action-btn-delay" },
   { label: "Decide at dispatch", value: "Decide at dispatch", className: "vote-action-btn-go" },
 ];

@@ -37,7 +37,9 @@ export function WelcomeScreen({ voterName, totalJobs, onBegin, onGoToSummary, ha
           <div className="disclaimer-icon">⚠️</div>
           <div className="disclaimer-content">
             <div className="disclaimer-title">IMPORTANT NOTICE</div>
-            <div className="disclaimer-text">Only Tyler and Bob may cancel jobs</div>
+            <div className="disclaimer-text">
+              Only Tyler and Bob may cancel jobs. This form helps give us context at dispatch to make the correct decisions.
+            </div>
           </div>
         </div>
 
